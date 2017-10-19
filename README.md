@@ -2,7 +2,7 @@
 
 ## Get Key
 
-<img src="https://github.com/dinhtho/GoogleMapDemo/blob/master/image0.png" width="500"/>
+<img src="https://github.com/dinhtho/GoogleMapDemo/blob/master/image0.png" width="1000"/>
 ## Add build.gradle
 ```
     compile 'com.google.android.gms:play-services-maps:9.6.1'
