@@ -1,15 +1,25 @@
 # Google Map
 
-## Get Key
+## Get Map Key
 
 <img src="https://github.com/dinhtho/GoogleMapDemo/blob/master/image0.png" width="1000"/>
-## Add build.gradle
 
+## Get Key Direction Api
+
+https://developers.google.com/maps/documentation/directions/
+
+
+## Add build.gradle
+### For Map and Location
 ```
-    compile 'com.google.android.gms:play-services-maps:9.6.1'
+    compile 'com.google.android.gms:play-services-maps:11.6.0'
 ```
 ```
-    compile 'com.google.android.gms:play-services-location:9.6.1'
+    compile 'com.google.android.gms:play-services-location:11.6.0'
+```
+### For Directions
+```
+    compile 'com.akexorcist:googledirectionlibrary:1.1.0'
 ```
 
 ## Add key in Manifest

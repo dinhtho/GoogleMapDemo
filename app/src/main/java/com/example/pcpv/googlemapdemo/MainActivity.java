@@ -3,6 +3,7 @@ package com.example.pcpv.googlemapdemo;
 import android.Manifest;
 import android.content.DialogInterface;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
@@ -13,8 +14,16 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.View;
+import android.widget.Button;
 import android.widget.Toast;
 
+import com.akexorcist.googledirection.DirectionCallback;
+import com.akexorcist.googledirection.GoogleDirection;
+import com.akexorcist.googledirection.constant.TransportMode;
+import com.akexorcist.googledirection.model.Direction;
+import com.akexorcist.googledirection.model.Route;
+import com.akexorcist.googledirection.util.DirectionConverter;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
@@ -26,10 +35,12 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -37,26 +48,56 @@ public class MainActivity extends AppCompatActivity
         implements OnMapReadyCallback,
         GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener,
-        com.google.android.gms.location.LocationListener,GoogleMap.OnMyLocationButtonClickListener {
+        com.google.android.gms.location.LocationListener,
+        GoogleMap.OnMyLocationButtonClickListener,
+        DirectionCallback {
     private static final String TAG = "MainActivity";
-
-    GoogleMap mGoogleMap;
-    SupportMapFragment mapFrag;
-    LocationRequest mLocationRequest;
-    GoogleApiClient mGoogleApiClient;
-    Location mLastLocation;
-    Marker mCurrLocationMarker;
+    public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
+    private GoogleMap mGoogleMap;
+    private SupportMapFragment mapFrag;
+    private Button buttonDirection;
+    private LocationRequest mLocationRequest;
+    private GoogleApiClient mGoogleApiClient;
+    private Location mLastLocation;
+    private Marker mCurrLocationMarker;
+    private String serverKey = "AIzaSyCA5Z0thsa1TykzSq1a_4BazghTZ9UaCfE";
+    private Location currentLocation;
+    private LatLng destination;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
         getSupportActionBar().setTitle("Map Location Activity");
+        destination = new LatLng(10.7626825, 106.6803805);
 
         mapFrag = (SupportMapFragment) getSupportFragmentManager().findFragmentById(R.id.map);
         mapFrag.getMapAsync(this);
+
+
+        buttonDirection = findViewById(R.id.bt_direction);
+        buttonDirection.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                getDirectionFromHere();
+            }
+        });
     }
+
+    private void getDirectionFromHere() {
+        Log.i(TAG, "onMyLocationButtonClick: " + currentLocation);
+
+        if (currentLocation != null) {
+            GoogleDirection.withServerKey(serverKey)
+                    .from(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()))
+                    .to(destination)
+                    .transportMode(TransportMode.DRIVING)
+                    .execute(this);
+        } else {
+            Toast.makeText(MainActivity.this, "Please get current location", Toast.LENGTH_SHORT).show();
+        }
+    }
+
 
     @Override
     public void onPause() {
@@ -72,6 +113,8 @@ public class MainActivity extends AppCompatActivity
     public void onMapReady(GoogleMap googleMap) {
         mGoogleMap = googleMap;
         mGoogleMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+        mGoogleMap.setOnMyLocationButtonClickListener(this);
+
 
         //Initialize Google Play Services
         if (android.os.Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -123,27 +166,12 @@ public class MainActivity extends AppCompatActivity
 
     @Override
     public void onLocationChanged(Location location) {
-        Log.i(TAG, "onLocationChanged: ");
-        mLastLocation = location;
-        if (mCurrLocationMarker != null) {
-            mCurrLocationMarker.remove();
-        }
-
-        //Place current location marker
-        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
-        MarkerOptions markerOptions = new MarkerOptions();
-        markerOptions.position(latLng);
-        markerOptions.title("It's me");
-        markerOptions.icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_MAGENTA));
-        mCurrLocationMarker = mGoogleMap.addMarker(markerOptions);
-        //move map camera
-        mGoogleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 11));
-
-        // get Address
+        // get changed Address
         getAddress(location);
     }
-    private void getAddress(Location location){
-        if(location!=null) {
+
+    private void getAddress(Location location) {
+        if (location != null) {
             Geocoder geocoder;
             List<Address> addresses;
             geocoder = new Geocoder(this, Locale.getDefault());
@@ -164,8 +192,6 @@ public class MainActivity extends AppCompatActivity
         }
 
     }
-
-    public static final int MY_PERMISSIONS_REQUEST_LOCATION = 99;
 
     private void checkLocationPermission() {
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION)
@@ -190,7 +216,6 @@ public class MainActivity extends AppCompatActivity
                         .create()
                         .show();
 
-
             } else {
                 // No explanation needed, we can request the permission.
                 ActivityCompat.requestPermissions(this,
@@ -208,9 +233,6 @@ public class MainActivity extends AppCompatActivity
                 // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-
-                    // permission was granted, yay! Do the
-                    // location-related task you need to do.
                     if (ContextCompat.checkSelfPermission(this,
                             Manifest.permission.ACCESS_FINE_LOCATION)
                             == PackageManager.PERMISSION_GRANTED) {
@@ -222,28 +244,23 @@ public class MainActivity extends AppCompatActivity
                     }
 
                 } else {
-
-                    // permission denied, boo! Disable the
-                    // functionality that depends on this permission.
                     Toast.makeText(this, "permission denied", Toast.LENGTH_LONG).show();
                 }
                 return;
             }
 
-            // other 'case' lines to check for other
-            // permissions this app might request
         }
     }
 
     @Override
     public boolean onMyLocationButtonClick() {
-        Location location = mGoogleMap.getMyLocation();
+        currentLocation = mGoogleMap.getMyLocation();
         if (mCurrLocationMarker != null) {
             mCurrLocationMarker.remove();
         }
 
         //Place current location marker
-        LatLng latLng = new LatLng(location.getLatitude(), location.getLongitude());
+        LatLng latLng = new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude());
         MarkerOptions markerOptions = new MarkerOptions();
         markerOptions.position(latLng);
         markerOptions.title("It's me");
@@ -253,5 +270,33 @@ public class MainActivity extends AppCompatActivity
         //move map camera
         mGoogleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 11));
         return false;
+    }
+
+
+    @Override
+    public void onDirectionSuccess(Direction direction, String rawBody) {
+        if (direction.isOK()) {
+            Route route = direction.getRouteList().get(0);
+            mGoogleMap.addMarker(new MarkerOptions().position(destination));
+
+            ArrayList<LatLng> directionPositionList = route.getLegList().get(0).getDirectionPoint();
+            mGoogleMap.addPolyline(DirectionConverter.createPolyline(this, directionPositionList, 5, Color.RED));
+            setCameraWithCoordinationBounds(route);
+
+        } else {
+            Toast.makeText(MainActivity.this, direction.getStatus(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    public void onDirectionFailure(Throwable t) {
+        Toast.makeText(MainActivity.this, t.getMessage(), Toast.LENGTH_SHORT).show();
+    }
+
+    private void setCameraWithCoordinationBounds(Route route) {
+        LatLng southwest = route.getBound().getSouthwestCoordination().getCoordination();
+        LatLng northeast = route.getBound().getNortheastCoordination().getCoordination();
+        LatLngBounds bounds = new LatLngBounds(southwest, northeast);
+        mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 100));
     }
 }
