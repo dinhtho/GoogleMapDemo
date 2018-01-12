@@ -279,6 +279,23 @@ public class MainActivity extends AppCompatActivity
             Route route = direction.getRouteList().get(0);
             mGoogleMap.addMarker(new MarkerOptions().position(destination));
 
+
+            mGoogleMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
+                @Override
+                public View getInfoWindow(Marker marker) {
+                    return null;
+                }
+
+                @Override
+                public View getInfoContents(Marker marker) {
+                    if (marker.getPosition().equals(destination)) {
+                        View view = MainActivity.this.getLayoutInflater().inflate(R.layout.custom_maker_layout, null);
+                        return view;
+                    }
+                    return null;
+                }
+            });
+
             ArrayList<LatLng> directionPositionList = route.getLegList().get(0).getDirectionPoint();
             mGoogleMap.addPolyline(DirectionConverter.createPolyline(this, directionPositionList, 5, Color.RED));
             setCameraWithCoordinationBounds(route);
